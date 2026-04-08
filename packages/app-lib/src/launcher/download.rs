@@ -88,6 +88,7 @@ pub async fn download_version_info(
             &version.url,
             None,
             None,
+            None,
             &st.api_semaphore,
             &st.pool,
         )
@@ -97,6 +98,7 @@ pub async fn download_version_info(
             let partial: d::modded::PartialVersionInfo = fetch_json(
                 Method::GET,
                 &loader.url,
+                None,
                 None,
                 None,
                 &st.api_semaphore,
@@ -186,6 +188,7 @@ pub async fn download_assets_index(
         let index = fetch_json(
             Method::GET,
             &version.asset_index.url,
+            None,
             None,
             None,
             &st.fetch_semaphore,

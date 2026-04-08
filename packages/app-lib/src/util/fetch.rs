@@ -163,6 +163,7 @@ pub async fn fetch_json<T>(
     url: &str,
     sha1: Option<&str>,
     json_body: Option<serde_json::Value>,
+    header: Option<(&str, &str)>,
     semaphore: &FetchSemaphore,
     exec: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
 ) -> crate::Result<T>
@@ -170,7 +171,7 @@ where
     T: DeserializeOwned,
 {
     let result = fetch_advanced(
-        method, url, sha1, json_body, None, None, semaphore, exec,
+        method, url, sha1, json_body, header, None, semaphore, exec,
     )
     .await?;
     let value = serde_json::from_slice(&result)?;

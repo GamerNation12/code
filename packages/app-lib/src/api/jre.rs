@@ -78,6 +78,7 @@ pub async fn auto_install_java(java_version: u32) -> crate::Result<PathBuf> {
                 ),
                 None,
                 None,
+                None,
                 &state.fetch_semaphore,
                 &state.pool,
             ).await?;

@@ -1022,8 +1022,9 @@ impl CachedEntry {
                     method.clone(),
                     url,
                     None,
-                    None,
-                    fetch_semaphore,
+                            None,
+                            None,
+                            fetch_semaphore,
                     pool,
                 )
             }))
@@ -1101,7 +1102,8 @@ impl CachedEntry {
                             &*format!("{}{}", $api_url, $url_suffix),
                             None,
                             None,
-                            &fetch_semaphore,
+                            None,
+                            fetch_semaphore,
                             pool,
                         )
                         .await?,
@@ -1245,8 +1247,8 @@ impl CachedEntry {
                     concat!(env!("MODRINTH_API_URL"), "version_files"),
                     None,
                     Some(serde_json::json!({
-                        "algorithm": "sha1",
-                        "hashes": &keys,
+                        "hashes": keys.iter().map(|x| x.to_string()).collect::<Vec<_>>(),
+                        "algorithm": "sha1"
                     })),
                     fetch_semaphore,
                     pool,
@@ -1312,6 +1314,8 @@ impl CachedEntry {
                         fetch_json(
                             Method::GET,
                             url,
+                            None,
+                            None,
                             None,
                             None,
                             fetch_semaphore,
@@ -1493,6 +1497,7 @@ impl CachedEntry {
                                     "loaders": loaders_key.split('+').collect::<Vec<_>>(),
                                     "game_versions": [game_version]
                                 })),
+                                None,
                                 fetch_semaphore,
                                 pool,
                             )
@@ -1567,6 +1572,7 @@ impl CachedEntry {
                             url,
                             None,
                             None,
+                            None,
                             fetch_semaphore,
                             pool,
                         )
@@ -1608,7 +1614,9 @@ impl CachedEntry {
                         &url,
                         None,
                         None,
-                        fetch_semaphore,
+                            None,
+                            None,
+                            fetch_semaphore,
                         pool,
                     )
                     .await
@@ -1657,6 +1665,7 @@ impl CachedEntry {
                         fetch_json(
                             Method::GET,
                             url,
+                            None,
                             None,
                             None,
                             fetch_semaphore,

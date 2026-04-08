@@ -299,6 +299,7 @@ impl FriendsSocket {
             concat!(env!("MODRINTH_API_URL_V3"), "friends"),
             None,
             None,
+            None,
             semaphore,
             exec,
         )
