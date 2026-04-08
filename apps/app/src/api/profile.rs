@@ -32,6 +32,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             profile_update_project,
             profile_add_project_from_version,
             profile_add_project_from_path,
+            profile_add_curseforge_project,
             profile_toggle_disable_project,
             profile_remove_project,
             profile_update_managed_modrinth_version,
@@ -245,12 +246,16 @@ pub async fn profile_update_project(
 
 // Adds a project to a profile from a version ID
 // invoke('plugin:profile|profile_add_project_from_version')
-#[tauri::command]
-pub async fn profile_add_project_from_version(
-    path: &str,
-    version_id: &str,
-) -> Result<String> {
     Ok(profile::add_project_from_version(path, version_id).await?)
+}
+
+#[tauri::command]
+pub async fn profile_add_curseforge_project(
+    path: &str,
+    mod_id: u32,
+    file_id: u32,
+) -> Result<String> {
+    Ok(profile::profile_add_curseforge_project(path.to_string(), mod_id, file_id).await?)
 }
 
 // Adds a project to a profile from a path

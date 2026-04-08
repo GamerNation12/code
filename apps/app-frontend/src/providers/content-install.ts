@@ -32,6 +32,8 @@ import {
 	installVersionDependencies,
 	isVersionCompatible,
 } from '@/store/install.js'
+import { get_mod_cf, get_mod_files_cf } from '@/helpers/curseforge'
+import { add_project_from_curseforge } from '@/helpers/profile'
 
 interface ModalRef {
 	show: () => void
@@ -243,6 +245,7 @@ export function createContentInstall(opts: {
 	let currentProject: Labrinth.Projects.v2.Project | null = null
 	let currentVersions: Labrinth.Versions.v2.Version[] = []
 	let currentCallback: (versionId?: string) => void = () => {}
+	let currentSource: string = 'unknown'
 	let profileMap: Record<string, GameInstance> = {}
 
 	let pendingModpackInstall: {
@@ -258,10 +261,12 @@ export function createContentInstall(opts: {
 		versions: Labrinth.Versions.v2.Version[],
 		onInstall: (versionId?: string) => void,
 		hints?: { preferredLoader?: string; preferredGameVersion?: string; showProjectInfo?: boolean },
+		source: string = 'unknown',
 	) {
 		currentProject = project
 		currentVersions = versions
 		currentCallback = onInstall
+		currentSource = source
 
 		instances.value = []
 		defaultTab.value = 'existing'
@@ -426,15 +431,25 @@ export function createContentInstall(opts: {
 		}
 
 		try {
-			await add_project_from_version(instance.id, version.id)
-			await installVersionDependencies(
-				profile,
-				version,
-				(depProject: Labrinth.Projects.v2.Project, depVersion?: Labrinth.Versions.v2.Version) => {
-					addInstallingItem(instance.id, depProject, depVersion)
-					installedProjectIds.push(depProject.id)
-				},
-			)
+			if (currentSource === 'curseforge' || (currentProject as any).provider === 'curseforge') {
+				const modId = parseInt(currentProject!.id)
+				const fileId = parseInt(version.id)
+				await add_project_from_curseforge(instance.id, modId, fileId)
+				
+				// Resolve dependencies from CurseForge
+				const profile = profileMap[instance.id]
+				await resolveCFDependencies(instance.id, modId, fileId, profile.game_version, profile.loader)
+			} else {
+				await add_project_from_version(instance.id, version.id)
+				await installVersionDependencies(
+					profile,
+					version,
+					(depProject: Labrinth.Projects.v2.Project, depVersion?: Labrinth.Versions.v2.Version) => {
+						addInstallingItem(instance.id, depProject, depVersion)
+						installedProjectIds.push(depProject.id)
+					},
+				)
+			}
 			if (storeInstance) {
 				storeInstance.installed = true
 				storeInstance.installing = false
@@ -528,7 +543,49 @@ export function createContentInstall(opts: {
 		createInstanceCallback: (profile: string) => void = () => {},
 		hints?: { preferredLoader?: string; preferredGameVersion?: string; showProjectInfo?: boolean },
 	) {
-		const project: Labrinth.Projects.v2.Project = await get_project(projectId, 'must_revalidate')
+		let project: Labrinth.Projects.v2.Project
+		let versions: Labrinth.Versions.v2.Version[] = []
+
+		if (source === 'curseforge') {
+			const cfMod = await get_mod_cf(parseInt(projectId))
+			const loaderMapping: Record<string, number> = { forge: 2, fabric: 5, quilt: 6, neoforge: 7 }
+			const cfFiles = await get_mod_files_cf(
+				cfMod.id,
+				hints?.preferredGameVersion,
+				hints?.preferredLoader ? loaderMapping[hints.preferredLoader] : undefined
+			)
+
+			// Map CF mod to Modrinth-like Project
+			project = {
+				id: cfMod.id.toString(),
+				slug: cfMod.id.toString(),
+				title: cfMod.name,
+				description: cfMod.summary,
+				project_type: 'mod', // TODO: Map classId to project type
+				team: '',
+				organization: '',
+				icon_url: cfMod.logo?.thumbnail_url || '',
+				versions: cfFiles.map(f => f.id.toString()),
+				published: cfMod.date_released,
+				updated: cfMod.date_modified,
+				followers: 0,
+				downloads: cfMod.download_count,
+			} as any
+
+			// Map CF files to Modrinth-like Versions
+			versions = cfFiles.map(f => ({
+				id: f.id.toString(),
+				project_id: cfMod.id.toString(),
+				version_number: f.display_name,
+				date_published: f.file_date,
+				loaders: [f.mod_loader === 2 ? 'forge' : f.mod_loader === 5 ? 'fabric' : 'unknown'],
+				game_versions: f.game_versions,
+				files: [{ filename: f.file_name, primary: true }],
+			})) as any
+		} else {
+			project = await get_project(projectId, 'must_revalidate')
+			versions = (await get_version_many(project.versions)) as Labrinth.Versions.v2.Version[]
+		}
 
 		if (project.project_type === 'modpack') {
 			const version = versionId ?? project.versions[project.versions.length - 1]
@@ -585,18 +642,31 @@ export function createContentInstall(opts: {
 				const installedProjectIds: string[] = [project.id]
 				addInstallingItem(instancePath, project, version)
 				try {
-					await add_project_from_version(instance.path, version.id)
-					await installVersionDependencies(
-						instance,
-						version,
-						(
-							depProject: Labrinth.Projects.v2.Project,
-							depVersion?: Labrinth.Versions.v2.Version,
-						) => {
-							addInstallingItem(instancePath, depProject, depVersion)
-							installedProjectIds.push(depProject.id)
-						},
-					)
+					if (source === 'curseforge') {
+						const modId = parseInt(project.id)
+						const fileId = parseInt(version.id)
+						await add_project_from_curseforge(instance.path, modId, fileId)
+						await resolveCFDependencies(
+							instance.path,
+							modId,
+							fileId,
+							instance.game_version,
+							instance.loader,
+						)
+					} else {
+						await add_project_from_version(instance.path, version.id)
+						await installVersionDependencies(
+							instance,
+							version,
+							(
+								depProject: Labrinth.Projects.v2.Project,
+								depVersion?: Labrinth.Versions.v2.Version,
+							) => {
+								addInstallingItem(instancePath, depProject, depVersion)
+								installedProjectIds.push(depProject.id)
+							},
+						)
+					}
 
 					trackEvent('ProjectInstall', {
 						loader: instance.loader,
@@ -619,7 +689,71 @@ export function createContentInstall(opts: {
 				(await get_version_many(project.versions)) as Labrinth.Versions.v2.Version[]
 			).sort((a, b) => dayjs(b.date_published).valueOf() - dayjs(a.date_published).valueOf())
 			if (versionId) versions = versions.filter((v) => v.id === versionId)
-			await showModInstallModal(project, versions, callback, hints)
+			await showModInstallModal(project, versions, callback, hints, source)
+		}
+	}
+
+	async function resolveCFDependencies(
+		instanceId: string,
+		modId: number,
+		fileId: number,
+		gameVersion: string,
+		loader: string,
+		visited: Set<number> = new Set(),
+	) {
+		if (visited.has(modId)) return
+		visited.add(modId)
+
+		const files = await get_mod_files_cf(modId)
+		const file = files.find((f: any) => f.id === fileId)
+		if (!file || !file.dependencies) return
+
+		for (const dep of file.dependencies) {
+			// type 3 is Required dependency in CurseForge API
+			if (dep.type === 3) {
+				const depModId = dep.modId
+				if (visited.has(depModId)) continue
+
+				// Fetch best file for dependency
+				const loaderMapping: Record<string, number> = {
+					forge: 2,
+					fabric: 5,
+					quilt: 6,
+					neoforge: 7,
+				}
+				const depFiles = await get_mod_files_cf(
+					depModId,
+					gameVersion,
+					loaderMapping[loader],
+				)
+				if (depFiles.length > 0) {
+					const bestDepFile = depFiles[0] // API usually returns latest first
+					await add_project_from_curseforge(instanceId, depModId, bestDepFile.id)
+					await resolveCFDependencies(
+						instanceId,
+						depModId,
+						bestDepFile.id,
+						gameVersion,
+						loader,
+						visited,
+					)
+				}
+			}
+		}
+	}
+
+	async function handleInstallCF(instanceId: string, modId: number, fileId: number) {
+		const storeInstance = instances.value.find((i) => i.id === instanceId)
+		if (storeInstance) storeInstance.installing = true
+		try {
+			await add_project_from_curseforge(instanceId, modId, fileId)
+			if (storeInstance) {
+				storeInstance.installed = true
+				storeInstance.installing = false
+			}
+		} catch (err) {
+			if (storeInstance) storeInstance.installing = false
+			throw err
 		}
 	}
 
