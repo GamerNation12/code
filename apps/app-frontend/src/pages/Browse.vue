@@ -44,6 +44,7 @@ import InstanceIndicator from '@/components/ui/InstanceIndicator.vue'
 import SearchCard from '@/components/ui/SearchCard.vue'
 import { get_project_v3, get_search_results_v3 } from '@/helpers/cache.js'
 import { process_listener } from '@/helpers/events'
+import { search_cf } from '@/helpers/curseforge'
 import { get_by_profile_path } from '@/helpers/process'
 import {
 	get as getInstance,
@@ -66,6 +67,12 @@ const debugLog = useDebugLogger('Browse')
 
 const router = useRouter()
 const route = useRoute()
+
+const provider = ref<'modrinth' | 'curseforge'>('modrinth')
+const searchProviderOptions = [
+	{ label: 'Modrinth', value: 'modrinth' },
+	{ label: 'CurseForge', value: 'curseforge' },
+]
 
 const projectTypes = computed(() => {
 	debugLog('projectTypes computed', route.params.projectType)
@@ -535,7 +542,16 @@ watch(effectiveRequestParams, () => {
 	}, 200)
 })
 
-async function refreshSearch() {
+async function refreshSearch(resetOffline = true) {
+	if (resetOffline) {
+		offline.value = false
+	}
+
+	if (provider.value === 'curseforge') {
+		await refreshCurseForgeSearch()
+		return
+	}
+
 	const version = ++searchVersion
 	debugLog('refreshSearch start', { version, projectType: projectType.value })
 
@@ -797,6 +813,69 @@ const handleOptionsClick = (args) => {
 }
 
 debugLog('performing initial search')
+async function refreshCurseForgeSearch() {
+	loading.value = true
+	try {
+		// Map Modrinth loaders to CurseForge loader IDs
+		const loaderMapping = {
+			forge: 2,
+			fabric: 5,
+			quilt: 6,
+			neoforge: 7,
+		}
+		const modLoaderType = activeLoader.value ? loaderMapping[activeLoader.value] : undefined
+		
+		// Map ProjectType to CurseForge classId
+		const classIdMapping = {
+			mod: 6,
+			modpack: 4471,
+			resourcepack: 12,
+		}
+		const classId = classIdMapping[projectType.value]
+
+		const res = await search_cf(
+			query.value,
+			classId,
+			activeGameVersion.value,
+			modLoaderType,
+			currentPage.value - 1,
+		)
+
+		// Map CurseForge results to Modrinth SearchResult format
+		results.value = {
+			hits: res.data.map((mod) => ({
+				project_id: mod.id.toString(),
+				project_type: projectType.value,
+				slug: mod.id.toString(),
+				author: mod.authors[0]?.name || 'Unknown',
+				title: mod.name,
+				description: mod.summary,
+				categories: [], // CurseForge categories are different
+				display_categories: [],
+				versions: [],
+				downloads: mod.download_count,
+				follows: 0,
+				icon_url: mod.logo?.thumbnail_url || '',
+				date_created: '',
+				date_modified: mod.date_modified,
+				latest_version: '',
+				license: '',
+				client_side: 'required',
+				server_side: 'optional',
+				gallery: [],
+				provider: 'curseforge',
+			})),
+			offset: res.pagination.index,
+			limit: res.pagination.page_size,
+			total_hits: res.pagination.total_count,
+		}
+	} catch (e) {
+		handleError(e)
+	} finally {
+		loading.value = false
+	}
+}
+
 await refreshSearch()
 
 // Initialize previousFilterState after first search
@@ -923,6 +1002,26 @@ previousFilterState.value = JSON.stringify({
 			input-class="h-12"
 			@clear="clearSearch()"
 		/>
+		<div class="flex gap-2 items-center">
+			<span class="font-semibold text-primary">Provider:</span>
+			<div class="flex gap-1">
+				<ButtonStyled
+					v-for="opt in searchProviderOptions"
+					:key="opt.value"
+					:color="provider === opt.value ? 'brand' : 'default'"
+					type="outlined"
+					size="small"
+					@click="
+						() => {
+							provider = opt.value as any
+							onSearchChangeToTop()
+						}
+					"
+				>
+					{{ opt.label }}
+				</ButtonStyled>
+			</div>
+		</div>
 		<div class="flex gap-2">
 			<DropdownSelect
 				v-slot="{ selected }"
@@ -1095,11 +1194,11 @@ previousFilterState.value = JSON.stringify({
 						:active-game-version="activeGameVersion ?? undefined"
 						:categories="[
 							...(categories ?? []).filter(
-								(cat) =>
+								(cat: any) =>
 									result?.display_categories.includes(cat.name) && cat.project_type === projectType,
 							),
 							...(loaders ?? []).filter(
-								(loader) =>
+								(loader: any) =>
 									result?.display_categories.includes(loader.name) &&
 									loader.supported_project_types?.includes(projectType),
 							),

@@ -503,16 +503,49 @@ pub async fn add_project_from_version(
     version_id: &str,
 ) -> crate::Result<String> {
     let state = State::get().await?;
-    let project_path = Profile::add_project_version(
-        profile_path,
-        version_id,
-        &state.pool,
-        &state.fetch_semaphore,
-        &state.io_semaphore,
-    )
-    .await?;
+    Ok(project_path)
+}
 
-    emit_profile(profile_path, ProfilePayloadType::Edited).await?;
+/// Add a project from CurseForge
+#[tauri::command]
+pub async fn profile_add_curseforge_project(
+    profile_path: String,
+    mod_id: u32,
+    file_id: u32,
+) -> crate::Result<String> {
+    let state = State::get().await?;
+    
+    // Fetch file details (to get the download URL)
+    let files = crate::api::curseforge::get_mod_files_cf(mod_id, None, None).await?;
+    let file = files.into_iter().find(|f| f.id == file_id).ok_or_else(|| {
+        crate::ErrorKind::InputError(format!("CurseForge file {} not found for mod {}", file_id, mod_id))
+    })?;
+
+    let download_url = file.download_url.ok_or_else(|| {
+        crate::ErrorKind::InputError("This CurseForge file does not have a public download URL".to_string())
+    })?;
+
+    // Download the bytes
+    let bytes = crate::util::fetch::fetch(
+        &download_url,
+        None, // We don't have a hash verification yet for CF, API doesn't always provide it in the same format
+        &state.fetch_semaphore,
+        &state.pool,
+    ).await?;
+
+    let project_path = Profile::add_project_bytes(
+        &profile_path,
+        &file.file_name,
+        bytes,
+        None,
+        None, // Let it infer project type from contents
+        &state.io_semaphore,
+        &state.pool,
+    ).await?;
+
+    // TODO: Ideally we'd register this in the cache as a CurseForge project so update checks work
+    
+    emit_profile(&profile_path, ProfilePayloadType::Edited).await?;
 
     Ok(project_path)
 }

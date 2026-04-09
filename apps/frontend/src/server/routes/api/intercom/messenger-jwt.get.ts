@@ -7,9 +7,21 @@ type IntercomTokenResponse = {
 	token: string
 }
 
+async function getIntercomKeyFromSecretsStore(): Promise<string | undefined> {
+	try {
+		const mod = 'cloudflare:workers'
+		const { env } = await import(/* @vite-ignore */ mod)
+		return await env.INTERCOM_IDENTITY_SECRET?.get()
+	} catch {
+		// Not running in Cloudflare Workers environment
+		return undefined
+	}
+}
+
 async function signIntercomUserJwt(
 	user: { id: string; username: string; email?: string; created: string },
 	secret: string,
+	serverId?: string,
 ): Promise<string> {
 	const createdAt = Math.floor(new Date(user.created).getTime() / 1000)
 
@@ -24,6 +36,10 @@ async function signIntercomUserJwt(
 
 	if (Number.isFinite(createdAt)) {
 		payload.created_at = createdAt
+	}
+
+	if (serverId) {
+		payload.server_id = serverId
 	}
 
 	return await new SignJWT(payload)
@@ -51,8 +67,10 @@ export default defineEventHandler(async (event): Promise<IntercomTokenResponse> 
 
 	setHeader(event, 'cache-control', 'private, no-store, max-age=0')
 
-	const config = useRuntimeConfig(event)
-	if (!config.intercomIdentitySecret) {
+	const intercomSecret =
+		(await getIntercomKeyFromSecretsStore()) ?? useRuntimeConfig(event).intercomIdentitySecret
+
+	if (!intercomSecret) {
 		throw createError({
 			statusCode: 500,
 			message: 'Intercom identity secret is not configured',
@@ -91,7 +109,10 @@ export default defineEventHandler(async (event): Promise<IntercomTokenResponse> 
 		})
 	}
 
-	const token = await signIntercomUserJwt(user, config.intercomIdentitySecret)
+	const query = getQuery(event)
+	const serverId = typeof query.server_id === 'string' ? query.server_id : undefined
+
+	const token = await signIntercomUserJwt(user, intercomSecret, serverId)
 
 	return {
 		token,

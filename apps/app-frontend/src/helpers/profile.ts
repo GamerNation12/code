@@ -188,6 +188,15 @@ export async function add_project_from_version(path: string, versionId: string):
 	return await invoke('plugin:profile|profile_add_project_from_version', { path, versionId })
 }
 
+// Add a project to a profile from a CurseForge mod and file ID
+export async function add_project_from_curseforge(
+	path: string,
+	modId: number,
+	fileId: number,
+): Promise<string> {
+	return await invoke('plugin:profile|profile_add_curseforge_project', { path, modId, fileId })
+}
+
 // Add a project to a profile from a path + project_type
 // Returns a path to the new project file
 export async function add_project_from_path(
