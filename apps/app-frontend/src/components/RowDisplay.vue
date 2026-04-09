@@ -143,7 +143,7 @@ const handleOptionsClick = async (args) => {
 			break
 		case 'add_content':
 			await router.push({
-				path: `/browse/${args.item.loader === 'vanilla' ? 'datapack' : 'mod'}`,
+				path: `/browse/modrinth/${args.item.loader === 'vanilla' ? 'datapack' : 'mod'}`,
 				query: { i: args.item.path },
 			})
 			break

@@ -236,7 +236,6 @@ pub async fn install_zipped_mrpack_files(
                         .collect::<Vec<&str>>(),
                     project.hashes.get(&PackFileHash::Sha1).map(|x| &**x),
                     &state.fetch_semaphore,
-                    &state.pool,
                 )
                 .await?;
 

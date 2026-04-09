@@ -1,22 +1,38 @@
 <template>
 	<ProjectCard
-		:title="project.name"
+		:title="project.name || project.title"
 		:link="
 			() => {
 				emit('open')
-				$router.push({
-					path: `/project/${project.project_id ?? project.id}`,
-					query: { i: props.instance ? props.instance.path : undefined },
-				})
+				if (project.provider === 'curseforge') {
+					// For now, project pages are Modrinth-centric, but we can pass the provider
+					$router.push({
+						path: `/project/${project.project_id ?? project.id}`,
+						query: { 
+							i: props.instance ? props.instance.path : undefined,
+							provider: 'curseforge'
+						},
+					})
+				} else {
+					$router.push({
+						path: `/project/${project.project_id ?? project.id}`,
+						query: { i: props.instance ? props.instance.path : undefined },
+					})
+				}
 			}
 		"
-		:author="{ name: project.author, link: `https://modrinth.com/user/${project.author}` }"
+		:author="{ 
+			name: project.author, 
+			link: project.provider === 'curseforge' 
+				? undefined 
+				: `https://modrinth.com/user/${project.author}` 
+		}"
 		:icon-url="project.icon_url"
-		:summary="project.summary"
+		:summary="project.summary || project.description"
 		:tags="project.display_categories"
 		:all-tags="project.categories"
 		:downloads="project.downloads"
-		:followers="project.follows"
+		:followers="project.provider === 'curseforge' ? undefined : project.follows"
 		:date-updated="project.date_modified"
 		:banner="project.featured_gallery ?? undefined"
 		:color="project.color ?? undefined"

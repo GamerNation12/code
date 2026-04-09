@@ -29,7 +29,7 @@ export async function search_cf(
 	mod_loader_type?: number,
 	page?: number,
 ) {
-	return await invoke<any>('plugin:curseforge|search_cf', {
+	return await invoke<any>('plugin:curseforge|search_curseforge', {
 		query,
 		classId: class_id,
 		gameVersion: game_version,
@@ -39,7 +39,7 @@ export async function search_cf(
 }
 
 export async function get_mod_cf(modId: number) {
-	return await invoke<CurseForgeMod>('plugin:curseforge|get_mod_cf', { modId })
+	return await invoke<CurseForgeMod>('plugin:curseforge|get_mod_curseforge', { modId })
 }
 
 export async function get_mod_files_cf(
@@ -47,7 +47,7 @@ export async function get_mod_files_cf(
 	gameVersion?: string,
 	modLoaderType?: number,
 ) {
-	return await invoke<CurseForgeFile[]>('plugin:curseforge|get_mod_files_cf', {
+	return await invoke<CurseForgeFile[]>('plugin:curseforge|get_mod_files_curseforge', {
 		modId,
 		gameVersion,
 		modLoaderType,

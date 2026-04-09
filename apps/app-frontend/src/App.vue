@@ -4,6 +4,7 @@ import {
 	ArrowBigUpDashIcon,
 	ChangeSkinIcon,
 	CompassIcon,
+	CurseForgeIcon,
 	DownloadIcon,
 	ExternalIcon,
 	HomeIcon,
@@ -60,7 +61,7 @@ import { $fetch } from 'ofetch'
 import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 
-import ModrinthAppLogo from '@/assets/modrinth_app.svg?component'
+import NebulaAppLogo from '@/assets/nebula_logo.png'
 import ModrinthLoadingIndicator from '@/components/LoadingIndicatorBar.vue'
 import AccountsCard from '@/components/ui/AccountsCard.vue'
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
@@ -512,7 +513,7 @@ const forceSidebar = computed(
 )
 const sidebarVisible = computed(() => sidebarToggled.value || forceSidebar.value)
 const showAd = computed(
-	() => sidebarVisible.value && !hasPlus.value && credentials.value !== undefined,
+	() => false, // Nebula Launcher: Stay ad-free
 )
 
 watch(showAd, () => {
@@ -600,20 +601,20 @@ const updatePopupMessages = defineMessages({
 	body: {
 		id: 'app.update-popup.body',
 		defaultMessage:
-			'Modrinth App v{version} is ready to install! Reload to update now, or automatically when you close Modrinth App.',
+			'Nebula Launcher v{version} is ready to install! Reload to update now, or automatically when you close Nebula Launcher.',
 	},
 	meteredBody: {
 		id: 'app.update-popup.body.metered',
-		defaultMessage: `Modrinth App v{version} is available now! Since you're on a metered network, we didn't automatically download it.`,
+		defaultMessage: `Nebula Launcher v{version} is available now! Since you're on a metered network, we didn't automatically download it.`,
 	},
 	downloadedBody: {
 		id: 'app.update-popup.body.download-complete',
-		defaultMessage: `Modrinth App v{version} has finished downloading. Reload to update now, or automatically when you close Modrinth App.`,
+		defaultMessage: `Nebula Launcher v{version} has finished downloading. Reload to update now, or automatically when you close Nebula Launcher.`,
 	},
 	linuxBody: {
 		id: 'app.update-popup.body.linux',
 		defaultMessage:
-			'Modrinth App v{version} is available. Use your package manager to update for the latest features and fixes!',
+			'Nebula Launcher v{version} is available. Use your package manager to update for the latest features and fixes!',
 	},
 	reload: {
 		id: 'app.update-popup.reload',
@@ -990,12 +991,19 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 				<ServerIcon />
 			</NavButton>
 			<NavButton
-				v-tooltip.right="'Discover content'"
-				to="/browse/modpack"
-				:is-primary="() => route.path.startsWith('/browse') && !route.query.i"
+				v-tooltip.right="'Discover Nebula'"
+				to="/browse/modrinth/modpack"
+				:is-primary="() => route.path.startsWith('/browse/modrinth') && !route.query.i"
 				:is-subpage="(route) => route.path.startsWith('/project') && !route.query.i"
 			>
 				<CompassIcon />
+			</NavButton>
+			<NavButton
+				v-tooltip.right="'Discover CurseForge'"
+				to="/browse/curseforge/modpack"
+				:is-primary="() => route.path.startsWith('/browse/curseforge') && !route.query.i"
+			>
+				<CurseForgeIcon />
 			</NavButton>
 			<NavButton v-tooltip.right="'Skins (Beta)'" to="/skins">
 				<ChangeSkinIcon />
@@ -1059,7 +1067,7 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 			</NavButton>
 			<OverflowMenu
 				v-if="credentials?.user"
-				v-tooltip.right="`Modrinth account`"
+				v-tooltip.right="`Nebula account`"
 				class="w-12 h-12 text-primary rounded-full flex items-center justify-center text-2xl transition-all bg-transparent hover:bg-button-bg hover:text-contrast border-0 cursor-pointer"
 				:options="[
 					{
@@ -1088,13 +1096,13 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 				</template>
 				<template #sign-out> <LogOutIcon /> Sign out </template>
 			</OverflowMenu>
-			<NavButton v-else v-tooltip.right="'Sign in to a Modrinth account'" :to="() => signIn()">
+			<NavButton v-else v-tooltip.right="'Sign in to a Nebula account'" :to="() => signIn()">
 				<LogInIcon class="text-brand" />
 			</NavButton>
 		</div>
 		<div data-tauri-drag-region class="app-grid-statusbar bg-bg-raised h-[--top-bar-height] flex">
 			<div data-tauri-drag-region class="flex min-w-0 flex-1 overflow-hidden p-3">
-				<ModrinthAppLogo class="h-full w-auto shrink-0 text-contrast pointer-events-none" />
+				<img :src="NebulaAppLogo" class="h-6 w-auto shrink-0 text-contrast pointer-events-none rounded-full" />
 				<div data-tauri-drag-region class="flex shrink-0 items-center gap-1 ml-3">
 					<button
 						class="cursor-pointer p-0 m-0 text-contrast border-none outline-none bg-button-bg rounded-full flex items-center justify-center w-6 h-6 hover:brightness-75 transition-all"
@@ -1163,12 +1171,12 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 					v-if="availableSurvey"
 					class="w-[400px] z-20 fixed -bottom-12 pb-16 right-[--right-bar-width] mr-4 rounded-t-2xl card-shadow bg-bg-raised border-surface-5 border-[1px] border-solid border-b-0 p-4"
 				>
-					<h2 class="text-lg font-extrabold mt-0 mb-2">Hey there Modrinth user!</h2>
+					<h2 class="text-lg font-extrabold mt-0 mb-2">Hey there Nebula user!</h2>
 					<p class="m-0 leading-tight">
-						Would you mind answering a few questions about your experience with Modrinth App?
+						Would you mind answering a few questions about your experience with Nebula Launcher?
 					</p>
 					<p class="mt-3 mb-4 leading-tight">
-						This feedback will go directly to the Modrinth team and help guide future updates!
+						This feedback will go directly to the Nebula team and help guide future updates!
 					</p>
 					<div class="flex gap-2">
 						<ButtonStyled color="brand">
@@ -1274,16 +1282,6 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 					</div>
 				</div>
 			</div>
-			<template v-if="showAd">
-				<a
-					href="https://modrinth.plus?app"
-					class="absolute bottom-[250px] w-full flex justify-center items-center gap-1 px-4 py-3 text-purple font-medium hover:underline z-10"
-					target="_blank"
-				>
-					<ArrowBigUpDashIcon class="text-2xl" /> Upgrade to Modrinth+
-				</a>
-				<PromotionWrapper />
-			</template>
 		</div>
 	</div>
 	<I18nDebugPanel />

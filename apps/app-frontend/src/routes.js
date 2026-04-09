@@ -38,6 +38,10 @@ export default new createRouter({
 		},
 		{
 			path: '/browse/:projectType',
+			redirect: (to) => `/browse/modrinth/${to.params.projectType}${to.query && Object.keys(to.query).length > 0 ? '?' + new URLSearchParams(to.query).toString() : ''}`,
+		},
+		{
+			path: '/browse/:provider/:projectType',
 			name: 'Discover content',
 			component: Pages.Browse,
 			meta: {

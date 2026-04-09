@@ -110,7 +110,6 @@ pub async fn profile_create(
                     icon,
                     None,
                     &state.fetch_semaphore,
-                    &state.pool,
                 )
                 .await?;
                 let name =

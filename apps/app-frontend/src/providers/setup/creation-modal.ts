@@ -140,7 +140,7 @@ export function setupCreationModal(notificationManager: AbstractWebNotificationM
 
 	function handleBrowseModpacks() {
 		installationModal.value?.hide()
-		router.push('/browse/modpack')
+		router.push('/browse/modrinth/modpack')
 	}
 
 	async function searchModpacks(query: string, limit: number = 10) {

@@ -45,7 +45,10 @@ window.addEventListener('online', () => {
 })
 
 async function fetchInstances() {
-	instances.value = await list().catch(handleError)
+	instances.value = await list().catch((err) => {
+		handleError(err)
+		return []
+	})
 
 	const filters = []
 	for (const instance of instances.value) {
@@ -103,20 +106,20 @@ onUnmounted(() => {
 <template>
 	<div class="p-6 flex flex-col gap-2">
 		<h1 v-if="recentInstances?.length > 0" class="m-0 text-2xl font-extrabold">Welcome back!</h1>
-		<h1 v-else class="m-0 text-2xl font-extrabold">Welcome to Modrinth App!</h1>
+		<h1 v-else class="m-0 text-2xl font-extrabold">Welcome to Nebula Launcher!</h1>
 		<RecentWorldsList :recent-instances="recentInstances" />
 		<RowDisplay
 			v-if="hasFeaturedProjects"
 			:instances="[
 				{
 					label: 'Discover a modpack',
-					route: '/browse/modpack',
+					route: '/browse/modrinth/modpack',
 					instances: featuredModpacks,
 					downloaded: false,
 				},
 				{
 					label: 'Discover mods',
-					route: '/browse/mod',
+					route: '/browse/modrinth/mod',
 					instances: featuredMods,
 					downloaded: false,
 				},

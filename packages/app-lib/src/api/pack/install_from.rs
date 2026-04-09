@@ -268,7 +268,6 @@ pub async fn generate_pack_from_version_id(
         None,
         Some((&loading_bar, 70.0)),
         &state.fetch_semaphore,
-        &state.pool,
     )
     .await?;
     emit_loading(&loading_bar, 0.0, Some("Fetching project metadata"))?;
@@ -294,7 +293,7 @@ pub async fn generate_pack_from_version_id(
         let fetched = if let Some(icon_url) = project.icon_url {
             let state = State::get().await?;
             let icon_bytes =
-                fetch(&icon_url, None, &state.fetch_semaphore, &state.pool)
+                fetch(&icon_url, None, &state.fetch_semaphore)
                     .await?;
 
             let filename = icon_url.rsplit('/').next();

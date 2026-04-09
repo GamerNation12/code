@@ -1140,7 +1140,6 @@ impl Profile {
             &file.url,
             file.hashes.get("sha1").map(|x| &**x),
             fetch_semaphore,
-            pool,
         )
         .await?;
 

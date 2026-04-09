@@ -529,7 +529,6 @@ pub async fn profile_add_curseforge_project(
         &download_url,
         None, // We don't have a hash verification yet for CF, API doesn't always provide it in the same format
         &state.fetch_semaphore,
-        &state.pool,
     ).await?;
 
     let project_path = Profile::add_project_bytes(
@@ -919,7 +918,6 @@ async fn run_credentials(
                             "server_id": &server_id,
                         }),
                         &state.api_semaphore,
-                        &state.pool,
                     )
                     .await;
 
@@ -1010,7 +1008,6 @@ pub async fn try_update_playtime(path: &str) -> crate::Result<()> {
             concat!(env!("MODRINTH_API_BASE_URL"), "analytics/playtime"),
             serde_json::to_value(hashmap)?,
             &state.api_semaphore,
-            &state.pool,
         )
         .await
     } else {

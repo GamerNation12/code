@@ -9,6 +9,14 @@ fn main() {
         tauri_build::Attributes::new()
             .codegen(tauri_build::CodegenContext::new())
             .plugin(
+                "curseforge",
+                InlinedPlugin::new()
+                    .commands(&["search_curseforge", "get_mod_curseforge", "get_mod_files_curseforge"])
+                    .default_permission(
+                        DefaultPermissionRule::AllowAllCommands,
+                    ),
+            )
+            .plugin(
                 "auth",
                 InlinedPlugin::new()
                     .commands(&[

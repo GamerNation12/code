@@ -68,11 +68,7 @@ const debugLog = useDebugLogger('Browse')
 const router = useRouter()
 const route = useRoute()
 
-const provider = ref<'modrinth' | 'curseforge'>('modrinth')
-const searchProviderOptions = [
-	{ label: 'Modrinth', value: 'modrinth' },
-	{ label: 'CurseForge', value: 'curseforge' },
-]
+const provider = computed(() => (route.params.provider as 'modrinth' | 'curseforge') ?? 'modrinth')
 
 const projectTypes = computed(() => {
 	debugLog('projectTypes computed', route.params.projectType)
@@ -121,7 +117,7 @@ const isFromWorlds = computed(() => route.query.from === 'worlds')
 
 if (isFromWorlds.value && route.params.projectType !== 'server') {
 	router.replace({
-		path: '/browse/server',
+		path: `/browse/${provider.value}/server`,
 		query: route.query,
 	})
 }
@@ -483,12 +479,21 @@ const messages = defineMessages({
 		id: 'search.filter.locked.instance.sync',
 		defaultMessage: 'Sync with instance',
 	},
+	discoverModrinth: {
+		id: 'app.browse.discover-modrinth',
+		defaultMessage: 'Discover Modrinth',
+	},
+	discoverCurseForge: {
+		id: 'app.browse.discover-curseforge',
+		defaultMessage: 'Discover CurseForge',
+	},
 })
 
 const breadcrumbs = useBreadcrumbs()
-const browseTitle = computed(() =>
-	formatMessage(isFromWorlds.value ? messages.discoverServers : messages.discoverContent),
-)
+const browseTitle = computed(() => {
+	if (isFromWorlds.value) return formatMessage(messages.discoverServers)
+	return formatMessage(provider.value === 'curseforge' ? messages.discoverCurseForge : messages.discoverModrinth)
+})
 breadcrumbs.setName('BrowseTitle', browseTitle.value)
 if (instance.value) {
 	const instanceLink = `/instance/${encodeURIComponent(instance.value.path)}`
@@ -503,7 +508,7 @@ if (instance.value) {
 onBeforeRouteLeave(() => {
 	breadcrumbs.setContext({
 		name: browseTitle.value,
-		link: `/browse/${projectType.value}`,
+		link: `/browse/${provider.value}/${projectType.value}`,
 		query: route.query,
 	})
 })
@@ -514,6 +519,12 @@ const projectType = ref<ProjectType>(route.params.projectType as ProjectType)
 
 watch(projectType, () => {
 	loading.value = true
+})
+
+watch(provider, () => {
+	debugLog('provider changed', provider.value)
+	currentPage.value = 1
+	refreshSearch()
 })
 
 interface SearchResults extends Labrinth.Search.v3.SearchResults {
@@ -752,16 +763,16 @@ const selectableProjectTypes = computed(() => {
 	const suffix = queryString ? `?${queryString}` : ''
 
 	if (isFromWorlds.value) {
-		return [{ label: 'Servers', href: `/browse/server${suffix}` }]
+		return [{ label: 'Servers', href: `/browse/${provider.value}/server${suffix}` }]
 	}
 
 	return [
-		{ label: 'Modpacks', href: `/browse/modpack${suffix}`, shown: modpacks },
-		{ label: 'Mods', href: `/browse/mod${suffix}`, shown: mods },
-		{ label: 'Resource Packs', href: `/browse/resourcepack${suffix}` },
-		{ label: 'Data Packs', href: `/browse/datapack${suffix}`, shown: dataPacks },
-		{ label: 'Shaders', href: `/browse/shader${suffix}` },
-		{ label: 'Servers', href: `/browse/server${suffix}`, shown: !instance.value },
+		{ label: 'Modpacks', href: `/browse/${provider.value}/modpack${suffix}`, shown: modpacks },
+		{ label: 'Mods', href: `/browse/${provider.value}/mod${suffix}`, shown: mods },
+		{ label: 'Resource Packs', href: `/browse/${provider.value}/resourcepack${suffix}` },
+		{ label: 'Data Packs', href: `/browse/${provider.value}/datapack${suffix}`, shown: dataPacks },
+		{ label: 'Shaders', href: `/browse/${provider.value}/shader${suffix}` },
+		{ label: 'Servers', href: `/browse/${provider.value}/server${suffix}`, shown: !instance.value },
 	]
 })
 
@@ -844,14 +855,17 @@ async function refreshCurseForgeSearch() {
 		// Map CurseForge results to Modrinth SearchResult format
 		results.value = {
 			hits: res.data.map((mod) => ({
+				id: mod.id.toString(), // Some components use project_id, some use id
 				project_id: mod.id.toString(),
 				project_type: projectType.value,
 				slug: mod.id.toString(),
 				author: mod.authors[0]?.name || 'Unknown',
-				title: mod.name,
-				description: mod.summary,
-				categories: [], // CurseForge categories are different
-				display_categories: [],
+				name: mod.name,           // SearchCard uses name
+				title: mod.name,          // Some components use title
+				summary: mod.summary,     // SearchCard uses summary
+				description: mod.summary, // Some components use description
+				categories: mod.categories.map(c => c.name),
+				display_categories: mod.categories.map(c => c.name),
 				versions: [],
 				downloads: mod.download_count,
 				follows: 0,
@@ -930,7 +944,7 @@ previousFilterState.value = JSON.stringify({
 				</template>
 			</SearchSidebarFilter>
 		</template>
-		<template v-else>
+		<template v-else-if="provider === 'modrinth'">
 			<SearchSidebarFilter
 				v-for="filter in filters.filter((f) => f.display !== 'none')"
 				:key="`filter-${filter.id}`"
@@ -1002,26 +1016,6 @@ previousFilterState.value = JSON.stringify({
 			input-class="h-12"
 			@clear="clearSearch()"
 		/>
-		<div class="flex gap-2 items-center">
-			<span class="font-semibold text-primary">Provider:</span>
-			<div class="flex gap-1">
-				<ButtonStyled
-					v-for="opt in searchProviderOptions"
-					:key="opt.value"
-					:color="provider === opt.value ? 'brand' : 'default'"
-					type="outlined"
-					size="small"
-					@click="
-						() => {
-							provider = opt.value as any
-							onSearchChangeToTop()
-						}
-					"
-				>
-					{{ opt.label }}
-				</ButtonStyled>
-			</div>
-		</div>
 		<div class="flex gap-2">
 			<DropdownSelect
 				v-slot="{ selected }"

@@ -884,7 +884,6 @@ async fn get_modpack_identifiers(
         &[&primary_file.url],
         primary_file.hashes.get("sha1").map(|s| s.as_str()),
         fetch_semaphore,
-        pool,
     )
     .await?;
 

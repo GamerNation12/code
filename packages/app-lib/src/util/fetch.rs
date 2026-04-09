@@ -151,10 +151,17 @@ pub async fn fetch(
     url: &str,
     sha1: Option<&str>,
     semaphore: &FetchSemaphore,
-    exec: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
 ) -> crate::Result<Bytes> {
-    fetch_advanced(Method::GET, url, sha1, None, None, None, semaphore, exec)
-        .await
+    fetch_advanced(
+        Method::GET,
+        url,
+        sha1,
+        None,
+        None,
+        None,
+        semaphore,
+    )
+    .await
 }
 
 #[tracing::instrument(skip(json_body, semaphore))]
@@ -165,15 +172,11 @@ pub async fn fetch_json<T>(
     json_body: Option<serde_json::Value>,
     header: Option<(&str, &str)>,
     semaphore: &FetchSemaphore,
-    exec: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
 ) -> crate::Result<T>
 where
     T: DeserializeOwned,
 {
-    let result = fetch_advanced(
-        method, url, sha1, json_body, header, None, semaphore, exec,
-    )
-    .await?;
+    let result = fetch_advanced(method, url, sha1, json_body, header, None, semaphore).await?;
     let value = serde_json::from_slice(&result)?;
     Ok(value)
 }
@@ -189,7 +192,6 @@ pub async fn fetch_advanced(
     header: Option<(&str, &str)>,
     loading_bar: Option<(&LoadingBarId, f64)>,
     semaphore: &FetchSemaphore,
-    exec: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
 ) -> crate::Result<Bytes> {
     let _permit = semaphore.0.acquire().await?;
 
@@ -201,7 +203,12 @@ pub async fn fetch_advanced(
         .is_none_or(|x| &*x.0.to_lowercase() != "authorization")
         && (url.starts_with("https://cdn.modrinth.com") || is_api_url)
     {
-        crate::state::ModrinthCredentials::get_active(exec).await?
+        let state = crate::state::State::get().await.ok();
+        if let Some(state) = state {
+            crate::state::ModrinthCredentials::get_active(&state.pool).await?
+        } else {
+            None
+        }
     } else {
         None
     };
@@ -212,6 +219,11 @@ pub async fn fetch_advanced(
         }
 
         let mut req = REQWEST_CLIENT.request(method.clone(), url);
+
+        if url.contains("api.curseforge.com") {
+            req = req.header(reqwest::header::USER_AGENT, "PrismLauncher/8.0");
+            req = req.header(reqwest::header::ACCEPT, "application/json");
+        }
 
         if let Some(body) = json_body.clone() {
             req = req.json(&body);
@@ -320,7 +332,6 @@ pub async fn fetch_mirrors(
     mirrors: &[&str],
     sha1: Option<&str>,
     semaphore: &FetchSemaphore,
-    exec: impl sqlx::Executor<'_, Database = sqlx::Sqlite> + Copy,
 ) -> crate::Result<Bytes> {
     if mirrors.is_empty() {
         return Err(
@@ -329,7 +340,7 @@ pub async fn fetch_mirrors(
     }
 
     for (index, mirror) in mirrors.iter().enumerate() {
-        let result = fetch(mirror, sha1, semaphore, exec).await;
+        let result = fetch(mirror, sha1, semaphore).await;
 
         if result.is_ok() || (result.is_err() && index == (mirrors.len() - 1)) {
             return result;
@@ -345,14 +356,13 @@ pub async fn post_json(
     url: &str,
     json_body: serde_json::Value,
     semaphore: &FetchSemaphore,
-    exec: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
 ) -> crate::Result<()> {
     let _permit = semaphore.0.acquire().await?;
 
     let mut req = REQWEST_CLIENT.post(url).json(&json_body);
 
     if let Some(creds) =
-        crate::state::ModrinthCredentials::get_active(exec).await?
+        crate::state::ModrinthCredentials::get_active(&crate::State::get().await?.pool).await?
     {
         req = req.header("Authorization", &creds.session);
     }

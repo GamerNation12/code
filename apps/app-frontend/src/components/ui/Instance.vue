@@ -103,7 +103,7 @@ const openFolder = async () => {
 
 const addContent = async () => {
 	await router.push({
-		path: `/browse/${props.instance.loader === 'vanilla' ? 'datapack' : 'mod'}`,
+		path: `/browse/modrinth/${props.instance.loader === 'vanilla' ? 'datapack' : 'mod'}`,
 		query: { i: props.instance.path },
 	})
 }

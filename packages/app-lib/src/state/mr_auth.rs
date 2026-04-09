@@ -36,7 +36,6 @@ impl ModrinthCredentials {
                     Some(("Authorization", &*creds.session)),
                     None,
                     semaphore,
-                    exec,
                 )
                 .await
                 .ok()
@@ -227,7 +226,6 @@ async fn fetch_info(
         Some(("Authorization", token)),
         None,
         semaphore,
-        exec,
     )
     .await?;
     let value = serde_json::from_slice(&result)?;

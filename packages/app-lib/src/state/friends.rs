@@ -301,7 +301,6 @@ impl FriendsSocket {
             None,
             None,
             semaphore,
-            exec,
         )
         .await
     }
@@ -328,7 +327,6 @@ impl FriendsSocket {
             None,
             None,
             semaphore,
-            exec,
         )
         .await;
 
@@ -360,7 +358,6 @@ impl FriendsSocket {
             None,
             None,
             semaphore,
-            exec,
         )
         .await?;
 

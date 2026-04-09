@@ -4,15 +4,15 @@ use crate::util::fetch::{fetch_json, FetchSemaphore};
 
 const BASE_URL: &str = "https://api.curseforge.com/v1";
 const MINECRAFT_GAME_ID: u32 = 432;
-const HARDCODED_API_KEY: &str = "$2a$10$V8z1wndBlA7Q82DGkdJ3y.yFGFTQ/Ggg0fMsSYbRVSs.zJBGPNK6y";
+const HARDCODED_API_KEY: &str = "$2a$10$vS0j.1Y8NfA/tByE0iBe5K7j7S3E0JvD5y8P25ZAgX6u4m/5/K97Zgxte";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CurseForgeMod {
     pub id: u32,
     pub name: String,
-    pub summary: String,
-    pub website_url: String,
+    pub summary: Option<String>,
+    pub website_url: Option<String>,
     pub logo: Option<CurseForgeLogo>,
     pub authors: Vec<CurseForgeAuthor>,
     pub download_count: f64,
@@ -25,7 +25,7 @@ pub struct CurseForgeMod {
 pub struct CurseForgeCategory {
     pub id: u32,
     pub name: String,
-    pub url: String,
+    pub url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -51,27 +51,32 @@ pub struct CurseForgeDependency {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CurseForgeLogo {
-    pub thumbnail_url: String,
-    pub url: String,
+    pub thumbnail_url: Option<String>,
+    pub url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CurseForgeAuthor {
     pub name: String,
-    pub url: String,
+    pub url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchResponse {
     pub data: Vec<CurseForgeMod>,
     pub pagination: Pagination,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Pagination {
+    #[serde(default)]
     pub index: u32,
+    #[serde(default)]
     pub page_size: u32,
+    #[serde(default)]
     pub total_count: u32,
 }
 
@@ -105,6 +110,8 @@ pub async fn search_curseforge(
 
     let header = ("x-api-key", api_key);
     
+    tracing::debug!("Searching CurseForge: {}", url);
+    
     let res: SearchResponse = fetch_json(
         Method::GET,
         &url,
@@ -112,8 +119,10 @@ pub async fn search_curseforge(
         None,
         Some(header),
         &state.api_semaphore,
-        &state.pool,
-    ).await?;
+    ).await.map_err(|e| {
+        tracing::error!("CurseForge search failed: {:?}", e);
+        e
+    })?;
 
     Ok(res)
 }
@@ -135,7 +144,6 @@ pub async fn get_mod_cf(mod_id: u32) -> crate::Result<CurseForgeMod> {
         None,
         Some(header),
         &state.api_semaphore,
-        &state.pool,
     ).await?;
 
     Ok(res.data)
@@ -165,7 +173,6 @@ pub async fn get_mod_files_cf(mod_id: u32, game_version: Option<String>, mod_loa
         None,
         Some(header),
         &state.api_semaphore,
-        &state.pool,
     ).await?;
 
     Ok(res.data)

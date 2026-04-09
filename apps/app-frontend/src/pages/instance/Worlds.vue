@@ -63,7 +63,7 @@
 					<button
 						class="!h-10 flex items-center gap-2"
 						@click="
-							router.push({ path: '/browse/server', query: { i: instance.path, from: 'worlds' } })
+							router.push({ path: '/browse/modrinth/server', query: { i: instance.path, from: 'worlds' } })
 						"
 					>
 						<CompassIcon class="size-5" />
@@ -149,7 +149,7 @@
 				<button
 					class="!h-10 flex items-center gap-2"
 					@click="
-						router.push({ path: '/browse/server', query: { i: instance.path, from: 'worlds' } })
+						router.push({ path: '/browse/modrinth/server', query: { i: instance.path, from: 'worlds' } })
 					"
 				>
 					<CompassIcon class="size-5" />
