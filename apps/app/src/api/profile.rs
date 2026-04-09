@@ -4,7 +4,6 @@ use path_util::SafeRelativeUtf8UnixPathBuf;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use theseus::data::{ContentItem, Dependency, LinkedModpackInfo};
 use theseus::prelude::*;
 use theseus::profile::QuickPlayType;
 use theseus::server_address::ServerAddress;
@@ -244,8 +243,11 @@ pub async fn profile_update_project(
     Ok(profile::update_project(path, project_path, None).await?)
 }
 
-// Adds a project to a profile from a version ID
-// invoke('plugin:profile|profile_add_project_from_version')
+#[tauri::command]
+pub async fn profile_add_project_from_version(
+    path: &str,
+    version_id: &str,
+) -> Result<String> {
     Ok(profile::add_project_from_version(path, version_id).await?)
 }
 

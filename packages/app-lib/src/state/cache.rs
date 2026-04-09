@@ -1250,6 +1250,7 @@ impl CachedEntry {
                         "hashes": keys.iter().map(|x| x.to_string()).collect::<Vec<_>>(),
                         "algorithm": "sha1"
                     })),
+                    None,
                     fetch_semaphore,
                     pool,
                 )
@@ -1311,16 +1312,7 @@ impl CachedEntry {
 
                 futures::future::try_join_all(fetch_urls.iter().map(
                     |(_, url)| {
-                        fetch_json(
-                            Method::GET,
-                            url,
-                            None,
-                            None,
-                            None,
-                            None,
-                            fetch_semaphore,
-                            pool,
-                        )
+                        fetch_json::<daedalus::modded::Manifest>(Method::GET, url, None, None, None, fetch_semaphore, pool)
                     },
                 ))
                 .await?
@@ -1567,15 +1559,7 @@ impl CachedEntry {
 
                 futures::future::try_join_all(fetch_urls.iter().map(
                     |(_, url)| {
-                        fetch_json(
-                            Method::GET,
-                            url,
-                            None,
-                            None,
-                            None,
-                            fetch_semaphore,
-                            pool,
-                        )
+                        fetch_json::<SearchResult>(Method::GET, url, None, None, None, fetch_semaphore, pool)
                     },
                 ))
                 .await?
@@ -1614,9 +1598,8 @@ impl CachedEntry {
                         &url,
                         None,
                         None,
-                            None,
-                            None,
-                            fetch_semaphore,
+                        None,
+                        fetch_semaphore,
                         pool,
                     )
                     .await
@@ -1662,15 +1645,7 @@ impl CachedEntry {
 
                 futures::future::try_join_all(fetch_urls.iter().map(
                     |(_, url)| {
-                        fetch_json(
-                            Method::GET,
-                            url,
-                            None,
-                            None,
-                            None,
-                            fetch_semaphore,
-                            pool,
-                        )
+                        fetch_json::<SearchResultV3>(Method::GET, url, None, None, None, fetch_semaphore, pool)
                     },
                 ))
                 .await?

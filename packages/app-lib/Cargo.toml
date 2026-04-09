@@ -104,6 +104,7 @@ tracing-subscriber = { workspace = true, features = ["chrono", "env-filter"] }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
 whoami = { workspace = true }
+urlencoding = { workspace = true }
 zbus = { workspace = true }
 zip = { workspace = true }
 

@@ -503,11 +503,10 @@ pub async fn add_project_from_version(
     version_id: &str,
 ) -> crate::Result<String> {
     let state = State::get().await?;
-    Ok(project_path)
+    Ok(profile_path.to_string())
 }
 
 /// Add a project from CurseForge
-#[tauri::command]
 pub async fn profile_add_curseforge_project(
     profile_path: String,
     mod_id: u32,
