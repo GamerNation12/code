@@ -101,7 +101,7 @@ export interface ContentInstallContext {
 		source?: string,
 		callback?: (versionId?: string) => void,
 		createInstanceCallback?: (profile: string) => void,
-		hints?: { preferredLoader?: string; preferredGameVersion?: string; showProjectInfo?: boolean },
+		hints?: { preferredLoader?: string; preferredGameVersion?: string; showProjectInfo?: boolean; provider?: string },
 	) => Promise<void>
 	installingItems: Ref<Map<string, ContentItem[]>>
 }
@@ -260,7 +260,7 @@ export function createContentInstall(opts: {
 		project: Labrinth.Projects.v2.Project,
 		versions: Labrinth.Versions.v2.Version[],
 		onInstall: (versionId?: string) => void,
-		hints?: { preferredLoader?: string; preferredGameVersion?: string; showProjectInfo?: boolean },
+		hints?: { preferredLoader?: string; preferredGameVersion?: string; showProjectInfo?: boolean; provider?: string },
 		source: string = 'unknown',
 	) {
 		currentProject = project
@@ -431,7 +431,7 @@ export function createContentInstall(opts: {
 		}
 
 		try {
-			if (currentSource === 'curseforge' || (currentProject as any).provider === 'curseforge') {
+			if (currentSource === 'curseforge' || (currentProject as any).provider === 'curseforge' || (currentProject as any).hints?.provider === 'curseforge') {
 				const modId = parseInt(currentProject!.id)
 				const fileId = parseInt(version.id)
 				await add_project_from_curseforge(instance.id, modId, fileId)
@@ -541,14 +541,14 @@ export function createContentInstall(opts: {
 		source: string = 'unknown',
 		callback: (versionId?: string) => void = () => {},
 		createInstanceCallback: (profile: string) => void = () => {},
-		hints?: { preferredLoader?: string; preferredGameVersion?: string; showProjectInfo?: boolean },
+		hints?: { preferredLoader?: string; preferredGameVersion?: string; showProjectInfo?: boolean; provider?: string },
 	) {
 		let project: Labrinth.Projects.v2.Project
 		let versions: Labrinth.Versions.v2.Version[] = []
 
-		if (source === 'curseforge') {
+		if (source === 'curseforge' || hints?.provider === 'curseforge') {
 			const cfMod = await get_mod_cf(parseInt(projectId))
-			const loaderMapping: Record<string, number> = { forge: 2, fabric: 5, quilt: 6, neoforge: 7 }
+			const loaderMapping: Record<string, number> = { forge: 1, fabric: 4, quilt: 5, neoforge: 6 }
 			const cfFiles = await get_mod_files_cf(
 				cfMod.id,
 				hints?.preferredGameVersion,
@@ -578,7 +578,7 @@ export function createContentInstall(opts: {
 				project_id: cfMod.id.toString(),
 				version_number: f.display_name,
 				date_published: f.file_date,
-				loaders: [f.mod_loader === 2 ? 'forge' : f.mod_loader === 5 ? 'fabric' : 'unknown'],
+				loaders: [f.mod_loader === 1 ? 'forge' : f.mod_loader === 4 ? 'fabric' : 'unknown'],
 				game_versions: f.game_versions,
 				files: [{ filename: f.file_name, primary: true }],
 			})) as any

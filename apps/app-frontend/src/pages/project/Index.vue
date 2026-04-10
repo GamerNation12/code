@@ -405,6 +405,9 @@ async function fetchProjectData() {
 				downloads: Math.floor(project.download_count),
 				followers: 0,
 				is_available: project.is_available,
+				categories: project.categories?.map((c: any) => c.name) || [],
+				display_categories: project.categories?.map((c: any) => c.name) || [],
+				versions: [],
 			}
 		}
 	} else {
@@ -533,9 +536,13 @@ function fetchDeferredServerData(project) {
 await fetchProjectData()
 
 let unlistenProcesses
+process_listener((e) => {
 	if (e.event === 'finished' && serverInstancePath.value && e.profile_path_id === serverInstancePath.value) {
 		serverPlaying.value = false
 	}
+}).then((unlisten) => {
+	unlistenProcesses = unlisten
+})
 
 onUnmounted(() => {
 	unlistenProcesses?.()
@@ -568,6 +575,9 @@ async function install(version) {
 		(profile) => {
 			router.push(`/instance/${profile}`)
 		},
+		{
+			provider: data.value.provider ?? undefined,
+		}
 	).catch(handleError)
 }
 

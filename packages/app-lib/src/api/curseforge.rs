@@ -10,13 +10,19 @@ const MINECRAFT_GAME_ID: u32 = 432;
 pub struct CurseForgeMod {
     pub id: u32,
     pub name: String,
+    #[serde(default)]
+    pub slug: String,
+    #[serde(default)]
     pub summary: Option<String>,
+    #[serde(default)]
     pub website_url: Option<String>,
     #[serde(default)]
     pub logo: Option<CurseForgeLogo>,
     #[serde(default)]
     pub authors: Vec<CurseForgeAuthor>,
+    #[serde(default)]
     pub download_count: f64,
+    #[serde(default)]
     pub date_modified: Option<String>,
     #[serde(default)]
     pub categories: Vec<CurseForgeCategory>,
@@ -31,6 +37,7 @@ pub struct CurseForgeMod {
 pub struct CurseForgeCategory {
     pub id: u32,
     pub name: String,
+    #[serde(default)]
     pub url: Option<String>,
 }
 
@@ -41,7 +48,9 @@ pub struct CurseForgeFile {
     pub mod_id: u32,
     pub display_name: String,
     pub file_name: String,
+    #[serde(default)]
     pub download_url: Option<String>,
+    #[serde(default)]
     pub file_date: String,
     #[serde(default)]
     pub game_versions: Vec<String>,
@@ -61,7 +70,9 @@ pub struct CurseForgeDependency {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CurseForgeLogo {
+    #[serde(default)]
     pub thumbnail_url: Option<String>,
+    #[serde(default)]
     pub url: Option<String>,
 }
 
@@ -69,6 +80,7 @@ pub struct CurseForgeLogo {
 #[serde(rename_all = "camelCase")]
 pub struct CurseForgeAuthor {
     pub name: String,
+    #[serde(default)]
     pub url: Option<String>,
 }
 

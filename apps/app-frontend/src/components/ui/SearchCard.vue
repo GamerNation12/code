@@ -1,25 +1,20 @@
 <template>
 	<ProjectCard
 		:title="project.name || project.title"
+		@click="emit('open')"
 		:link="
-			() => {
-				emit('open')
-				if (project.provider === 'curseforge') {
-					// For now, project pages are Modrinth-centric, but we can pass the provider
-					$router.push({
+			project.provider === 'curseforge'
+				? {
 						path: `/project/${project.project_id ?? project.id}`,
-						query: { 
+						query: {
 							i: props.instance ? props.instance.path : undefined,
 							provider: 'curseforge'
-						},
-					})
-				} else {
-					$router.push({
+						}
+					}
+				: {
 						path: `/project/${project.project_id ?? project.id}`,
-						query: { i: props.instance ? props.instance.path : undefined },
-					})
-				}
-			}
+						query: { i: props.instance ? props.instance.path : undefined }
+					}
 		"
 		:author="{ 
 			name: project.author, 
@@ -39,8 +34,8 @@
 		:environment="
 			['mod', 'modpack'].includes(projectType)
 				? {
-						clientSide: project.client_side?.[0],
-						serverSide: project.server_side?.[0],
+						clientSide: project.client_side,
+						serverSide: project.server_side,
 					}
 				: undefined
 		"
@@ -150,6 +145,7 @@ async function install() {
 		{
 			preferredLoader: props.activeLoader ?? undefined,
 			preferredGameVersion: props.activeGameVersion ?? undefined,
+			provider: props.project.provider ?? undefined,
 		},
 	).catch(handleError)
 }

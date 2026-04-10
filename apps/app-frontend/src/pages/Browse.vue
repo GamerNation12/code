@@ -533,7 +533,7 @@ interface SearchResults extends Labrinth.Search.v3.SearchResults {
 
 const results: Ref<SearchResults | null> = shallowRef(null)
 const pageCount = computed(() =>
-	results.value ? Math.ceil(results.value.total_hits / results.value.hits_per_page) : 1,
+	results.value ? Math.ceil(results.value.total_hits / (results.value.hits_per_page || results.value.limit)) : 1,
 )
 
 const effectiveRequestParams = computed(() => {
@@ -828,11 +828,11 @@ async function refreshCurseForgeSearch() {
 	loading.value = true
 	try {
 		// Map Modrinth loaders to CurseForge loader IDs
-		const loaderMapping = {
-			forge: 2,
-			fabric: 5,
-			quilt: 6,
-			neoforge: 7,
+		const loaderMapping: Record<string, number> = {
+			forge: 1,
+			fabric: 4,
+			quilt: 5,
+			neoforge: 6,
 		}
 		const modLoaderType = activeLoader.value ? loaderMapping[activeLoader.value] : undefined
 		
