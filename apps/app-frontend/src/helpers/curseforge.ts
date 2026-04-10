@@ -28,6 +28,9 @@ export async function search_cf(
 	game_version?: string,
 	mod_loader_type?: number,
 	page?: number,
+	pageSize?: number,
+	sort_field?: number,
+	sort_order?: string,
 ) {
 	return await invoke<any>('plugin:curseforge|search_curseforge', {
 		query,
@@ -35,6 +38,9 @@ export async function search_cf(
 		gameVersion: game_version,
 		modLoaderType: mod_loader_type,
 		page,
+		pageSize,
+		sortField: sort_field,
+		sortOrder: sort_order,
 	})
 }
 

@@ -781,13 +781,25 @@ export function createContentInstall(opts: {
 			if (!pendingModpackInstall) return
 			const { project, version, source, callback, createInstanceCallback } = pendingModpackInstall
 			pendingModpackInstall = null
-			await packInstall(
-				project.id,
-				version,
-				project.title,
-				project.icon_url,
-				createInstanceCallback,
-			)
+			if (source === 'curseforge') {
+				const { create_profile_and_install_cf } = await import('../helpers/pack')
+				await create_profile_and_install_cf(
+					Number(project.id),
+					Number(version),
+					project.title,
+					project.icon_url,
+					createInstanceCallback,
+				)
+			} else {
+				const { create_profile_and_install: packInstall } = await import('../helpers/pack')
+				await packInstall(
+					project.id,
+					version,
+					project.title,
+					project.icon_url,
+					createInstanceCallback,
+				)
+			}
 			trackEvent('PackInstall', {
 				id: project.id,
 				version_id: version,

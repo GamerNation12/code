@@ -22,7 +22,12 @@ pub async fn pack_install(
     location: CreatePackLocation,
     profile: String,
 ) -> Result<String> {
-    Ok(install_zipped_mrpack(location, profile).await?)
+    match location {
+        CreatePackLocation::FromCurseForgeVersionId { .. } => {
+            Ok(theseus::pack::install_curseforge::install_zipped_cfpack_wrapper(location, profile).await?)
+        }
+        _ => Ok(install_zipped_mrpack(location, profile).await?),
+    }
 }
 
 #[tauri::command]

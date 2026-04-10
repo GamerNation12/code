@@ -51,6 +51,7 @@ pub async fn install_zipped_mrpack(
         CreatePackLocation::FromFile { path } => {
             generate_pack_from_file(path, profile_path.clone()).await?
         }
+        _ => return Err(crate::ErrorKind::InputError("Invalid location for Modrinth pack install".to_string()).into()),
     };
 
     // Install pack files, and if it fails, fail safely by removing the profile

@@ -9,6 +9,9 @@ pub async fn search_curseforge(
     game_version: Option<String>,
     mod_loader_type: Option<u32>,
     page: Option<u32>,
+    page_size: Option<u32>,
+    sort_field: Option<u32>,
+    sort_order: Option<String>,
 ) -> Result<theseus::curseforge::SearchResponse> {
     Ok(theseus::curseforge::search_curseforge(
         query.to_string(),
@@ -16,6 +19,9 @@ pub async fn search_curseforge(
         game_version,
         mod_loader_type,
         page,
+        page_size,
+        sort_field,
+        sort_order,
     ).await?)
 }
 

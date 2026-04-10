@@ -221,8 +221,11 @@ pub async fn fetch_advanced(
         let mut req = REQWEST_CLIENT.request(method.clone(), url);
 
         if url.contains("api.curseforge.com") {
+            const CURSEFORGE_API_KEY: &str = "$2a$10$V8z1wndBlA7Q82DGkdJ3y.yFGFTQ/Ggg0fMsSYbRVSs.zJBGPNK6y";
+            tracing::debug!("CurseForge Request: {}", url);
             req = req.header(reqwest::header::USER_AGENT, "PrismLauncher/8.0");
             req = req.header(reqwest::header::ACCEPT, "application/json");
+            req = req.header("x-api-key", CURSEFORGE_API_KEY);
         }
 
         if let Some(body) = json_body.clone() {

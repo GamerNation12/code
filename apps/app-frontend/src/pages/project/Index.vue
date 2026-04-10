@@ -37,7 +37,7 @@
 			/>
 			<ProjectSidebarDetails
 				:project="data"
-				:has-versions="versions.length > 0"
+				:has-versions="versions?.length > 0"
 				:link-target="`_blank`"
 				:hide-license="isServerProject"
 				:show-followers="isServerProject"
@@ -162,6 +162,14 @@
 						</ButtonStyled>
 					</template>
 				</ProjectHeader>
+				<Admonition
+					v-if="data.provider === 'curseforge' && data.is_available === false"
+					type="warning"
+					class="mt-4"
+				>
+					This project has disabled third-party distribution. Nebula will attempt to download it
+					using a fallback mechanism (Edge CDN).
+				</Admonition>
 				<NavTabs
 					:links="[
 						{
@@ -177,7 +185,7 @@
 						{
 							label: 'Gallery',
 							href: `/project/${$route.params.id}/gallery`,
-							shown: data.gallery.length > 0,
+							shown: data.gallery?.length > 0,
 						},
 					]"
 				/>
@@ -203,7 +211,7 @@
 	</div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import {
 	BookmarkIcon,
 	CheckIcon,
@@ -231,6 +239,7 @@ import {
 	ProjectSidebarLinks,
 	ProjectSidebarServerInfo,
 	ProjectSidebarTags,
+	type ProjectType,
 } from '@modrinth/ui'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import dayjs from 'dayjs'
@@ -248,6 +257,7 @@ import {
 	get_version,
 	get_version_many,
 } from '@/helpers/cache.js'
+import { get_mod_cf, get_mod_files_cf } from '@/helpers/curseforge.ts'
 import { process_listener } from '@/helpers/events'
 import { get_by_profile_path } from '@/helpers/process'
 import {
@@ -307,7 +317,7 @@ const instanceFilters = computed(() => {
 		if (instance.value.loader !== 'vanilla') {
 			loaders.push(instance.value.loader)
 		}
-		if (instance.value.loader === 'vanilla' || data.value.loaders.includes('datapack')) {
+		if (instance.value.loader === 'vanilla' || data.value.loaders?.includes('datapack')) {
 			loaders.push('datapack')
 		}
 	}
@@ -368,11 +378,42 @@ function handleAddServerToInstance() {
 }
 
 async function fetchProjectData() {
-	const [project, projectV3Result] = await Promise.all([
-		get_project(route.params.id, 'must_revalidate').catch(handleError),
-		get_project_v3(route.params.id, 'must_revalidate').catch(handleError),
-	])
-	projectV3.value = projectV3Result
+	const isCurseForge = route.query.provider === 'curseforge'
+	let project, projectV3Result
+
+	if (isCurseForge) {
+		const modId = parseInt(route.params.id)
+		project = await get_mod_cf(modId).catch(handleError)
+		// Map CurseForge mod to Modrinth project format for UI compatibility
+		if (project) {
+			let projectType: ProjectType = 'mod'
+			if (project.class_id === 4471) projectType = 'modpack'
+			else if (project.class_id === 17 || project.class_id === 4546) projectType = 'resourcepack'
+			else if (project.class_id === 6552) projectType = 'shader'
+
+			project = {
+				...project,
+				id: project.id.toString(),
+				slug: project.id.toString(),
+				title: project.name,
+				description: project.summary,
+				body: project.summary,
+				icon_url: project.logo?.url || project.logo?.thumbnail_url,
+				project_type: projectType,
+				team: 'curseforge',
+				provider: 'curseforge',
+				downloads: Math.floor(project.download_count),
+				followers: 0,
+				is_available: project.is_available,
+			}
+		}
+	} else {
+		;[project, projectV3Result] = await Promise.all([
+			get_project(route.params.id, 'must_revalidate').catch(handleError),
+			get_project_v3(route.params.id, 'must_revalidate').catch(handleError),
+		])
+		projectV3.value = projectV3Result
+	}
 
 	if (!project) {
 		handleError('Error loading project')
@@ -380,14 +421,33 @@ async function fetchProjectData() {
 	}
 
 	data.value = project
-	;[versions.value, members.value, categories.value, instance.value, instanceProjects.value] =
-		await Promise.all([
-			get_version_many(project.versions, 'must_revalidate').catch(handleError),
-			get_team(project.team).catch(handleError),
-			get_categories().catch(handleError),
-			route.query.i ? getInstance(route.query.i).catch(handleError) : Promise.resolve(),
-			route.query.i ? getInstanceProjects(route.query.i).catch(handleError) : Promise.resolve(),
-		])
+	if (isCurseForge) {
+		const modFiles = await get_mod_files_cf(parseInt(route.params.id)).catch(handleError)
+		versions.value = (modFiles || []).map(file => ({
+			...file,
+			id: file.id.toString(),
+			version_number: file.display_name,
+			date_published: file.file_date,
+			game_versions: file.game_versions,
+			project_id: file.mod_id.toString(),
+		}))
+		;[members.value, categories.value, instance.value, instanceProjects.value] =
+			await Promise.all([
+				Promise.resolve([]),
+				get_categories().catch(handleError),
+				route.query.i ? getInstance(route.query.i).catch(handleError) : Promise.resolve(),
+				route.query.i ? getInstanceProjects(route.query.i).catch(handleError) : Promise.resolve(),
+			])
+	} else {
+		;[versions.value, members.value, categories.value, instance.value, instanceProjects.value] =
+			await Promise.all([
+				get_version_many(project.versions, 'must_revalidate').catch(handleError),
+				get_team(project.team).catch(handleError),
+				get_categories().catch(handleError),
+				route.query.i ? getInstance(route.query.i).catch(handleError) : Promise.resolve(),
+				route.query.i ? getInstanceProjects(route.query.i).catch(handleError) : Promise.resolve(),
+			])
+	}
 
 	versions.value = versions.value.sort((a, b) => dayjs(b.date_published) - dayjs(a.date_published))
 
@@ -473,17 +533,9 @@ function fetchDeferredServerData(project) {
 await fetchProjectData()
 
 let unlistenProcesses
-process_listener((e) => {
-	if (
-		e.event === 'finished' &&
-		serverInstancePath.value &&
-		e.profile_path_id === serverInstancePath.value
-	) {
+	if (e.event === 'finished' && serverInstancePath.value && e.profile_path_id === serverInstancePath.value) {
 		serverPlaying.value = false
 	}
-}).then((unlisten) => {
-	unlistenProcesses = unlisten
-})
 
 onUnmounted(() => {
 	unlistenProcesses?.()

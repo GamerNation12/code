@@ -844,12 +844,22 @@ async function refreshCurseForgeSearch() {
 		}
 		const classId = classIdMapping[projectType.value]
 
+		// Map Search Sort to CurseForge sort fields
+		let sortField = 1 // Featured (default)
+		if (currentSortType.value === 'downloads') sortField = 6
+		else if (currentSortType.value === 'newest') sortField = 2 // Popularity
+		else if (currentSortType.value === 'updated') sortField = 3 // LastUpdated
+		else if (currentSortType.value === 'follows') sortField = 2 // Popularity
+
 		const res = await search_cf(
 			query.value,
 			classId,
 			activeGameVersion.value,
 			modLoaderType,
 			currentPage.value - 1,
+			maxResults.value,
+			sortField,
+			'desc'
 		)
 
 		// Map CurseForge results to Modrinth SearchResult format
@@ -868,10 +878,11 @@ async function refreshCurseForgeSearch() {
 				display_categories: mod.categories.map(c => c.name),
 				versions: [],
 				downloads: mod.download_count,
+				provider: 'curseforge',
 				follows: 0,
-				icon_url: mod.logo?.thumbnail_url || '',
+				icon_url: mod.logo?.url || mod.logo?.thumbnail_url || '',
 				date_created: '',
-				date_modified: mod.date_modified,
+				date_modified: mod.date_modified || '',
 				latest_version: '',
 				license: '',
 				client_side: 'required',
@@ -1066,7 +1077,7 @@ previousFilterState.value = JSON.stringify({
 				<LoadingIndicator />
 			</section>
 			<section v-else-if="offline && results?.total_hits === 0" class="offline">
-				You are currently offline. Connect to the internet to browse Modrinth!
+				You are currently offline. Connect to the internet to browse!
 			</section>
 			<section
 				v-else-if="

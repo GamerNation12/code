@@ -127,7 +127,7 @@ providePopupNotificationManager(popupNotificationManager)
 const { addPopupNotification } = popupNotificationManager
 
 const tauriApiClient = new TauriModrinthClient({
-	userAgent: `modrinth/theseus/${getVersion()} (support@modrinth.com)`,
+	userAgent: `NebulaLauncher/${getVersion()} (support@nebulalauncher.io)`,
 	features: [
 		new AuthFeature({
 			token: async () => (await getCreds()).session,
@@ -991,7 +991,7 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 				<ServerIcon />
 			</NavButton>
 			<NavButton
-				v-tooltip.right="'Discover Nebula'"
+				v-tooltip.right="'Discover Modrinth'"
 				to="/browse/modrinth/modpack"
 				:is-primary="() => route.path.startsWith('/browse/modrinth') && !route.query.i"
 				:is-subpage="(route) => route.path.startsWith('/project') && !route.query.i"
@@ -1102,7 +1102,7 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 		</div>
 		<div data-tauri-drag-region class="app-grid-statusbar bg-bg-raised h-[--top-bar-height] flex">
 			<div data-tauri-drag-region class="flex min-w-0 flex-1 overflow-hidden p-3">
-				<img :src="NebulaAppLogo" class="h-6 w-auto shrink-0 text-contrast pointer-events-none rounded-full" />
+				<img :src="NebulaAppLogo" class="h-6 w-6 shrink-0 text-contrast pointer-events-none rounded-full object-cover" />
 				<div data-tauri-drag-region class="flex shrink-0 items-center gap-1 ml-3">
 					<button
 						class="cursor-pointer p-0 m-0 text-contrast border-none outline-none bg-button-bg rounded-full flex items-center justify-center w-6 h-6 hover:brightness-75 transition-all"

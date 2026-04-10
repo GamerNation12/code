@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
 use reqwest::Method;
-use crate::util::fetch::{fetch_json, FetchSemaphore};
+use crate::util::fetch::fetch_json;
 
 const BASE_URL: &str = "https://api.curseforge.com/v1";
 const MINECRAFT_GAME_ID: u32 = 432;
-const HARDCODED_API_KEY: &str = "$2a$10$vS0j.1Y8NfA/tByE0iBe5K7j7S3E0JvD5y8P25ZAgX6u4m/5/K97Zgxte";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -13,11 +12,18 @@ pub struct CurseForgeMod {
     pub name: String,
     pub summary: Option<String>,
     pub website_url: Option<String>,
+    #[serde(default)]
     pub logo: Option<CurseForgeLogo>,
+    #[serde(default)]
     pub authors: Vec<CurseForgeAuthor>,
     pub download_count: f64,
-    pub date_modified: String,
+    pub date_modified: Option<String>,
+    #[serde(default)]
     pub categories: Vec<CurseForgeCategory>,
+    #[serde(default)]
+    pub class_id: Option<u32>,
+    #[serde(default)]
+    pub is_available: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -37,8 +43,12 @@ pub struct CurseForgeFile {
     pub file_name: String,
     pub download_url: Option<String>,
     pub file_date: String,
+    #[serde(default)]
     pub game_versions: Vec<String>,
+    #[serde(default)]
     pub dependencies: Vec<CurseForgeDependency>,
+    #[serde(default)]
+    pub is_available: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -86,9 +96,11 @@ pub async fn search_curseforge(
     game_version: Option<String>,
     mod_loader_type: Option<u32>,
     page: Option<u32>,
+    page_size: Option<u32>,
+    sort_field: Option<u32>,
+    sort_order: Option<String>,
 ) -> crate::Result<SearchResponse> {
     let state = crate::State::get().await?;
-    let api_key = HARDCODED_API_KEY;
     
     let mut url = format!("{}/mods/search?gameId={}", BASE_URL, MINECRAFT_GAME_ID);
     
@@ -105,11 +117,19 @@ pub async fn search_curseforge(
         url.push_str(&format!("&modLoaderType={}", mlt));
     }
     if let Some(p) = page {
-        url.push_str(&format!("&index={}", p * 50)); // Assuming 50 per page
+        let ps = page_size.unwrap_or(50);
+        url.push_str(&format!("&index={}", p * ps));
+    }
+    if let Some(ps) = page_size {
+        url.push_str(&format!("&pageSize={}", ps));
+    }
+    if let Some(sf) = sort_field {
+        url.push_str(&format!("&sortField={}", sf));
+    }
+    if let Some(so) = sort_order {
+        url.push_str(&format!("&sortOrder={}", urlencoding::encode(&so)));
     }
 
-    let header = ("x-api-key", api_key);
-    
     tracing::debug!("Searching CurseForge: {}", url);
     
     let res: SearchResponse = fetch_json(
@@ -117,7 +137,7 @@ pub async fn search_curseforge(
         &url,
         None,
         None,
-        Some(header),
+        None,
         &state.api_semaphore,
     ).await.map_err(|e| {
         tracing::error!("CurseForge search failed: {:?}", e);
@@ -129,20 +149,17 @@ pub async fn search_curseforge(
 
 pub async fn get_mod_cf(mod_id: u32) -> crate::Result<CurseForgeMod> {
     let state = crate::State::get().await?;
-    let api_key = HARDCODED_API_KEY;
     let url = format!("{}/mods/{}", BASE_URL, mod_id);
 
     #[derive(Deserialize)]
     struct Wrapper { data: CurseForgeMod }
 
-    let header = ("x-api-key", api_key);
-
     let res: Wrapper = fetch_json(
         Method::GET,
         &url,
         None,
+        None, // No manual header needed anymore
         None,
-        Some(header),
         &state.api_semaphore,
     ).await?;
 
@@ -151,7 +168,6 @@ pub async fn get_mod_cf(mod_id: u32) -> crate::Result<CurseForgeMod> {
 
 pub async fn get_mod_files_cf(mod_id: u32, game_version: Option<String>, mod_loader_type: Option<u32>) -> crate::Result<Vec<CurseForgeFile>> {
     let state = crate::State::get().await?;
-    let api_key = HARDCODED_API_KEY;
     
     let mut url = format!("{}/mods/{}/files?", BASE_URL, mod_id);
     if let Some(gv) = game_version {
@@ -164,14 +180,12 @@ pub async fn get_mod_files_cf(mod_id: u32, game_version: Option<String>, mod_loa
     #[derive(Deserialize)]
     struct Wrapper { data: Vec<CurseForgeFile> }
 
-    let header = ("x-api-key", api_key);
-
     let res: Wrapper = fetch_json(
         Method::GET,
         &url,
         None,
         None,
-        Some(header),
+        None,
         &state.api_semaphore,
     ).await?;
 

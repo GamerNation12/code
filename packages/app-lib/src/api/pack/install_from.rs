@@ -96,6 +96,13 @@ pub enum CreatePackLocation {
     FromFile {
         path: PathBuf,
     },
+    // Create a pack from a curseforge project and file ID
+    FromCurseForgeVersionId {
+        project_id: u32,
+        file_id: u32,
+        title: String,
+        icon_url: Option<String>,
+    },
 }
 
 #[derive(Serialize, Deserialize)]
@@ -176,6 +183,16 @@ pub fn get_profile_from_pack(
                 ..Default::default()
             }
         }
+        CreatePackLocation::FromCurseForgeVersionId {
+            project_id: _,
+            file_id: _,
+            title,
+            icon_url,
+        } => CreatePackProfile {
+            name: title,
+            icon_url,
+            ..Default::default()
+        },
     }
 }
 
@@ -334,6 +351,105 @@ pub async fn generate_pack_from_version_id(
             override_title: Some(title),
             project_id: Some(project_id),
             version_id: Some(version_id),
+            existing_loading_bar: Some(loading_bar),
+            profile_path,
+        },
+    })
+}
+
+#[tracing::instrument]
+pub async fn generate_pack_from_cf_version_id(
+    project_id: u32,
+    file_id: u32,
+    title: String,
+    icon_url: Option<String>,
+    profile_path: String,
+    initialized_loading_bar: Option<LoadingBarId>,
+) -> crate::Result<CreatePack> {
+    let state = State::get().await?;
+    let has_icon_url = icon_url.is_some();
+
+    let loading_bar = if let Some(bar) = initialized_loading_bar {
+        emit_loading(&bar, 0.0, Some("Downloading pack file"))?;
+        bar
+    } else {
+        init_loading(
+            LoadingBarType::PackFileDownload {
+                profile_path: profile_path.clone(),
+                pack_name: title.clone(),
+                icon: icon_url,
+                pack_version: file_id.to_string(),
+            },
+            100.0,
+            "Downloading pack file",
+        )
+        .await?
+    };
+
+    emit_loading(&loading_bar, 0.0, Some("Fetching version"))?;
+    let mod_files = crate::api::curseforge::get_mod_files_cf(project_id, None, None).await?;
+    let version = mod_files.into_iter().find(|f| f.id == file_id)
+        .ok_or_else(|| crate::ErrorKind::InputError(format!("File {} not found for CurseForge mod {}", file_id, project_id)))?;
+    
+    emit_loading(&loading_bar, 10.0, None)?;
+
+    let url = version.download_url.ok_or_else(|| {
+        crate::ErrorKind::InputError("Specified CurseForge version has no public download URL".to_string())
+    })?;
+
+    let file = fetch_advanced(
+        Method::GET,
+        &url,
+        None,
+        None,
+        None,
+        Some((&loading_bar, 70.0)),
+        &state.fetch_semaphore,
+    )
+    .await?;
+    emit_loading(&loading_bar, 0.0, Some("Fetching project metadata"))?;
+
+    let project = crate::api::curseforge::get_mod_cf(project_id).await?;
+
+    let icon = if has_icon_url {
+        emit_loading(&loading_bar, 10.0, Some("Retrieving icon"))?;
+        let fetched = if let Some(logo) = project.logo {
+            let state = State::get().await?;
+            let icon_url = logo.thumbnail_url.as_deref().or(logo.url.as_deref());
+            
+            if let Some(url) = icon_url {
+                let icon_bytes = fetch(url, None, &state.fetch_semaphore).await?;
+                let filename = url.rsplit('/').next();
+
+                if let Some(filename) = filename {
+                    Some(write_cached_icon(filename, &state.directories.caches_dir(), icon_bytes, &state.io_semaphore).await?)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        emit_loading(&loading_bar, 10.0, None)?;
+        fetched
+    } else {
+        emit_loading(&loading_bar, 20.0, None)?;
+        None
+    };
+
+    if let Some(ref icon_path) = icon {
+        let _ = profile::edit_icon(&profile_path, Some(icon_path.as_path())).await;
+    }
+
+    Ok(CreatePack {
+        file,
+        description: CreatePackDescription {
+            icon,
+            override_title: Some(title),
+            project_id: Some(project_id.to_string()),
+            version_id: Some(file_id.to_string()),
             existing_loading_bar: Some(loading_bar),
             profile_path,
         },
